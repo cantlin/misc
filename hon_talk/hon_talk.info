@@ -1,0 +1,4 @@
+; $Id$
+name = hon_talk
+description = A Heroes of Newerth interface for Drupal.
+core = 6.x

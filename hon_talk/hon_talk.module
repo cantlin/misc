@@ -1,0 +1,708 @@
+<?php
+
+/**
+*
+* Define default values for module configuration options
+*
+**/
+
+define('HON_TALK_DEFAULT_VB_USERNAME', 'honforge');
+define('HON_TALK_DEFAULT_VB_FORUM_URL', 'http://forums.heroesofnewerth.com/');
+define('HON_TALK_DEFAULT_VB_SCRIPT_LOGIN', 'login.php?do=login');
+define('HON_TALK_DEFAULT_VB_SCRIPT_PM', 'private.php');
+define('HON_TALK_DEFAULT_VB_ACTION_NEWPM', '?do=newpm');
+define('HON_TALK_DEFAULT_VB_ACTION_INSERTPM', '?do=insertpm');
+define('HON_TALK_DEFAULT_XML_REQUEST_URL', 'http://xml.heroesofnewerth.com/xml_requester.php');
+define('HON_TALK_DEFAULT_XML_ACTION_NICK2ID', 'f=nick2id&opt=nick&nick[]=');
+
+/**
+*
+* Implements hook_admin()
+*
+* Defines the configuration options for this module using Drupal's Forms API
+*
+**/
+
+function hon_talk_admin() {
+	
+	/**
+	*
+	* Build form
+	*
+	**/
+	
+	$form = array();
+	
+	$form['hon_talk_vb_username'] = array(
+		'#type' => 'textfield',
+		'#title' => t('HoN forum user'),
+		'#description' => t('The username of the user that we should log in to the HoN forum as. The user must exist locally and there must be a matching user with the same password on the HoN forums. Default: '.HON_TALK_DEFAULT_VB_USERNAME.'.'),
+		'#default_value' => variable_get('hon_talk_vb_username', HON_TALK_DEFAULT_VB_USERNAME),
+		'#size' => 20,
+		'#maxlength' => '20',
+		'#required' => TRUE
+	);
+	
+	$form['hon_talk_vb_forum_url'] = array(
+		'#type' => 'textfield',
+		'#title' => t('HoN forum URL'),
+		'#description' => t('The URL, including trailing slash, of the HoN forums. Default: '.HON_TALK_DEFAULT_VB_FORUM_URL.'.'),
+		'#default_value' => variable_get('hon_talk_vb_forum_url', HON_TALK_DEFAULT_VB_FORUM_URL),
+		'#required' => TRUE
+	);
+	
+	$form['hon_talk_vb_script_login'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Login script'),
+		'#description' => t('The name of the vBulletin login script, <strong>including querystring</strong>. Default: '.HON_TALK_DEFAULT_VB_SCRIPT_LOGIN.'.'),
+		'#default_value' => variable_get('hon_talk_vb_script_login', HON_TALK_DEFAULT_VB_SCRIPT_LOGIN),
+		'#required' => TRUE
+	);
+	
+	$form['hon_talk_vb_script_pm'] = array(
+		'#type' => 'textfield',
+		'#title' => t('PM script'),
+		'#description' => t('The name of the vBulletin private messaging script, without querystring. Default: '.HON_TALK_DEFAULT_VB_SCRIPT_PM.'.'),
+		'#default_value' => variable_get('hon_talk_vb_script_pm', HON_TALK_DEFAULT_VB_SCRIPT_PM),
+		'#required' => TRUE
+	);
+	
+	$form['hon_talk_vb_action_newpm'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Get inbox action'),
+		'#description' => t('The querystring appended to the vBulletin PM script name to retrieve the PM inbox. Default: '.HON_TALK_DEFAULT_VB_ACTION_NEWPM.'.'),
+		'#default_value' => variable_get('hon_talk_vb_action_newpm', HON_TALK_DEFAULT_VB_ACTION_NEWPM),
+		'#size' => 20,
+		'#required' => TRUE
+	);
+	
+	$form['hon_talk_vb_action_insertpm'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Send PM action'),
+		'#description' => t('The querystring appended to the vBulletin PM script name to send a private message. Default: '.HON_TALK_DEFAULT_VB_ACTION_INSERTPM.'.'),
+		'#default_value' => variable_get('hon_talk_vb_action_insertpm', HON_TALK_DEFAULT_VB_ACTION_INSERTPM),
+		'#size' => 20,
+		'#required' => TRUE
+	);
+	
+	$form['hon_talk_xml_request_url'] = array(
+		'#type' => 'textfield',
+		'#title' => t('HoN XML Requester URL'),
+		'#description' => t('The URL of the HoN XML Requester. Default: '.HON_TALK_DEFAULT_XML_REQUEST_URL.'.'),
+		'#default_value' => variable_get('hon_talk_xml_request_url', HON_TALK_DEFAULT_XML_REQUEST_URL),
+		'#required' => TRUE
+	);
+	
+	$form['$hon_talk_xml_action_nick2id'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Nick2ID definition'),
+		'#description' => t('The querystring to append to the XML Requester URL when making a Nick2ID XML call. Default: '.HON_TALK_DEFAULT_XML_ACTION_NICK2ID.'.'),
+		'#default_value' => variable_get('hon_talk_xml_action_nick2id', HON_TALK_DEFAULT_XML_ACTION_NICK2ID),
+		'#required' => TRUE
+	);
+	
+	// If the default value for hon_talk_vb_username is in use, validate before submit
+	
+	if(variable_get('hon_talk_vb_username', HON_TALK_DEFAULT_VB_USERNAME) == HON_TALK_DEFAULT_VB_USERNAME) {
+		
+		$params = array(
+			'forum_user' => HON_TALK_DEFAULT_VB_USERNAME
+		);
+		
+		try {
+
+			// Instantiating VBTalk this way will call vb_validate_forum_user
+
+			$vb_talk = new VBTalk($params);
+
+		} catch(Exception $e) {
+
+			form_set_error('hon_talk_vb_username', t($e->getMessage()));
+
+		}
+		
+	}
+	
+	return system_settings_form($form);
+	
+} // hon_talk_admin()
+
+function hon_talk_admin_validate($form, &$form_state) {
+	
+	$forum_user = $form_state['values']['hon_talk_vb_username'];
+	
+	$params = array(
+		'forum_user' => $forum_user
+	);
+	
+	try {
+		
+		// Instantiating VBTalk this way will call vb_validate_forum_user
+		
+		if(!$vb_talk)
+			$vb_talk = new VBTalk($params);
+		
+	} catch(Exception $e) {
+		
+		form_set_error('hon_talk_vb_username', t($e->getMessage()));
+		
+	}
+	
+} // hon_talk_admin_validate()
+
+/**
+*
+* Implements hook_admin()
+*
+* Adds a link to the module configuration page
+*
+**/
+
+function hon_talk_menu() {
+	
+	$items = array();
+	
+	$items['admin/settings/hon_talk'] = array(
+		'title' => 'hon_talk Settings',
+		'description' => 'Configuration options for the hon_talk Drupal module.',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('hon_talk_admin'),
+		'access arguments' => array('access administration pages'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+	
+	return $items;
+	
+} // hon_talk_menu()
+
+/**
+*
+* Implements hook_mail_alter()
+*
+* Suppresses emails identifying as user_register_no_approval_required and sends a forum PM instead
+*
+*/
+
+function hon_talk_mail_alter(&$message) {
+
+	if($message['id'] == 'user_register_no_approval_required') {
+		
+		$recipient = reset(explode(',',$message['body'][0]));
+
+		$params = array(
+			'forum' => variable_get('hon_talk_vb_forum_url', HON_TALK_DEFAULT_VB_FORUM_URL),
+			'forum_user' => variable_get('hon_talk_vb_username', HON_TALK_DEFAULT_VB_FORUM_USERNAME),
+			'script_login' => variable_get('hon_talk_vb_script_login', HON_TALK_DEFAULT_VB_SCRIPT_LOGIN),
+			'script_pm' => variable_get('hon_talk_vb_script_pm', HON_TALK_DEFAULT_VB_SCRIPT_PM),
+			'action_newpm' => variable_get('hon_talk_vb_action_newpm', HON_TALK_DEFAULT_VB_ACTION_NEWPM),
+			'action_insertpm' => variable_get('hon_talk_vb_action_insertpm', HON_TALK_DEFAULT_VB_ACTION_INSERTPM)
+		);
+
+		try {
+
+			$vb_talk = new VBTalk($params);
+			$vb_talk->vb_build_pm($recipient, $message['subject'], 'Hi '.$message['body'][0]);
+			$vb_talk->vb_send_pms();
+				
+		} catch(Exception $e) {
+			
+			hon_talk_exception($e);
+			
+		}
+		
+		// Make sure Drupal sends that email straight to Nowheresville
+		
+		$message['to'] = 'johndoe@example.com';
+		
+	}
+
+} // hon_talk_mail_alter()
+
+/**
+*
+* Implements hook_cron()
+*
+* Removes users that have never logged in whenever cron.php is run
+* This prevents failed registration attempts (e.g. user deletes PM without using password) permanently preventing registration
+*
+**/
+
+function hon_talk_cron() {
+	
+	$last_week_timestamp = strtotime('-1 week');
+	
+	$sql = "DELETE FROM {users} WHERE login = %d AND created = %d";
+	$query = db_query($sql, '0', $last_week_timestamp);
+	
+	$affected_rows = db_affected_rows();
+	
+	drupal_set_message(t('hon_talk removed <strong>%affected_rows</strong> users created before <strong>%created</strong> that had never logged in.', array('%affected_rows' => $affected_rows, '%created' => date('d/m/y', $last_week_timestamp))));
+	
+}
+
+/**
+*
+* Implements hook_perm()
+*
+* Placeholder for module permissions
+*
+**/
+
+function hon_talk_perm() {
+	
+  return array('access hon_talk content');
+
+} // hon_talk_perm()
+
+/**
+*
+* Implements hook_help()
+*
+* Placeholder for module help
+*
+**/
+
+function hon_talk_help($path, $arg) {
+	
+  $output = '';
+
+  switch ($path) {
+    case "admin/help#foo":
+      $output = '<p>'.  t('hon_talk is a Heroes of Newerth interaction module.') .'</p>';
+      break;
+  }
+
+  return $output;
+
+} // hon_talk_help()
+
+/**
+*
+* Ensure usernames are valid HoN accounts and comply with HoN naming rules
+*
+**/
+
+function hon_talk_username_validate ($element) {
+	
+	$username = $element['#post']['name'];      
+	
+	if(!$username)
+    	return;
+	
+  	if(!is_valid_hon_username($username))
+	    	form_set_error('name', t('Usernames must be between 1 and 12 characters, may not start with a number and should contain only 0-9, a-z, ` and _.'));
+
+	if(!is_hon_account($username))
+		form_set_error('name', t('Could not find a Heroes of Newerth account that matched \''.$username.'\'.'));
+		
+	// drupal_set_message(t('Thanks! Your activation message has been sent to your account on the <a target="_blank" href="'.variable_get('hon_talk_vb_forum_url', HON_TALK_DEFAULT_VB_FORUM_URL).variable_get('hon_talk_vb_script_pm', HON_TALK_DEFAULT_VB_SCRIPT_PM).'">Heroes of Newerth Forums</a>.'));		
+
+} // hon_talk_username_validate()
+
+function hon_talk_form_alter(&$form, &$form_state, $form_id) {
+	
+  if($form_id == 'user_register' || $form_id == 'user_edit' || $form_id == 'user_profile_form') {       
+	
+	// Hide the email field, tweak the name field
+	
+	$form['mail']['#type'] = 'hidden';
+	$form['mail']['#default_value'] = 'johndoe@example.com';
+	unset($form['name']['#description']);
+	$form['name']['#title'] = "HoN Account Name";
+
+	// Add some extra username validation
+	
+    $form['#validate'][] = 'hon_talk_username_validate';
+
+  }
+
+} // hon_talk_form_alter()
+
+class XMLTalk {
+	
+	private $request_url;
+	private $action_nick2id;
+	
+	public function __construct($config_array) {
+		
+		if(!function_exists('curl_init'))
+			throw new Exception('cURL is not available.');
+		
+		if(!empty($config_array))
+			self::xml_set_config($config_array);
+		else
+			throw new Exception('XMLTalk must be instantiated with a configuration array as its first argument.');
+		
+	}
+	
+	private function xml_set_config($config_array) {
+		
+		// Usage: provide an array of key => value pairs to define XMLTalk properties
+		
+		foreach($config_array as $key => $val) {
+			
+			switch($key) {
+				
+				case 'request_url':
+				
+					$this->request_url = $val;
+					break;
+					
+				case 'action_nick2id':
+				
+					$this->action_nick2id = $val;
+					break;
+					
+			}
+			
+		}
+		
+	}
+	
+	public function nick2id($nick_string) {
+		
+		$ch = curl_init($this->request_url.'?'.$this->action_nick2id.$nick_string);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		$xml = curl_exec($ch);
+		curl_close($ch);
+		
+		// The username we looked for will be in the returned string if it exists
+		
+		if(!strstr($xml, 'nick=\''.$nick_string))
+			return false;
+			
+		return $xml;
+		
+	}
+	
+}
+
+class VBTalk {
+
+	// Originally by Vinthian
+
+	private $forum;
+	private $forum_user;
+	private $forum_user_password;
+	private $script_login;
+	private $script_pm;
+	private $action_newpm;
+	private $action_insertpm;
+	private $security_token_expr = '/<input\s+type="hidden"\s+name="securitytoken"\s+value="([\w\-]+)"\s*\/?>/i';
+	
+	private $logged_in = FALSE;
+	private $ch;
+	private $cookie;
+	private $pms = array();
+	
+	public function __construct($config_array) {
+		
+		// Class requires cURL
+
+		if(!function_exists('curl_init'))
+			throw new Exception('cURL is not available (required by class VBTalk).');
+			
+			
+		if(is_array($config_array))
+			self::vb_set_config($config_array);
+		else
+			throw new Exception('VBTalk must be instantiated with a configuration array as its first argument.');
+		
+	}
+	
+	private function vb_set_config($config_array) {
+		
+		// Usage: provide an array of key => value pairs to redefine VBTalk properties
+		
+		foreach($config_array as $key => $val) {
+			
+			switch($key) {
+				
+				case 'forum_user':
+					
+					self::vb_validate_forum_user($val);
+					
+					break;
+					
+				case 'forum_user_password':
+				
+					// If for some reason we are being given a password, try to confirm that it is an md5 hash
+					
+					if(strlen($val) != 32 || !ctype_alnum($val))
+						throw new Exception('form_user_password must be an md5 hash.');
+						
+					$this->forum_user_password = $val;
+					
+					break;
+					
+				case 'recipient':
+				
+					if(empty($val))
+						throw new Exception('You cannot provide an empty value for the property \'recipient\'.');
+
+					// Try and verify with the HoN masterserver that that user exists
+					
+					if(!is_hon_account($val))
+						throw new Exception('The recipient does not appear to have a Heroes of Newerth account.');
+						
+					$this->recipient = $val;
+					
+					break;
+					
+				default:
+				
+					$this->$key = $val;
+					
+			}
+			
+		}
+		
+	}
+	
+	public function vb_validate_forum_user($user_string) {
+		
+		if(!is_valid_hon_username($user_string))
+			throw new Exception(HON_TALK_BAD_HON_USERNAME_MSG);
+			
+		// Make sure user exists and retrieve password
+		
+		$match = FALSE;
+		
+		$sql = "SELECT pass FROM {users} WHERE name = '%s' LIMIT 1";
+		$query = db_query($sql, $user_string);
+		
+		while($row = db_fetch_object($query)) {
+			$pass = $row->pass;
+			if($pass) {
+				$match = TRUE;
+				$this->forum_user_password = $pass;
+			}
+		}
+		
+		if($match)
+			$this->forum_user = $user_string;
+		else
+			throw new Exception('HoN forum user does not exist in the local users list.');
+		
+	}
+
+	public function vb_login() {
+		
+		// Create a directory to store our cookie
+
+		if(!$this->cookie = tempnam( "/tmp", "vb_cookie" ))
+			throw new Exception('Could not create cookiejar.');
+			
+		$ch = curl_init();
+		
+		// Masquerade as Firefox
+		
+		curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) honforge authenticator');
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1); // Follow redirects
+		curl_setopt($ch, CURLOPT_COOKIEFILE, $this->cookie);
+		curl_setopt($ch, CURLOPT_COOKIEJAR, $this->cookie);
+		
+		// PHP >= 5.1.0
+		
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+
+		// Login
+		
+		curl_setopt($ch, CURLOPT_URL, $this->forum . $this->script_login);
+		curl_setopt($ch, CURLOPT_POST, true); 
+		curl_setopt($ch, CURLOPT_REFERER, $site.'index.php'); 
+		
+		$login_post_fields = array(
+			'vb_login_username'	=> $this->forum_user,
+			'vb_login_password'	=> '', // Interestingly enough, this doesn't need to be set.
+			'cookieuser' =>	'1', // "Remember me"
+			's' => '',
+			'securitytoken' => 'guest',
+			'do' =>	'login',
+			'vb_login_md5password' => $this->forum_user_password, // Hash Password
+			'vb_login_md5password_utf' => $this->forum_user_password, // UTF? Looks the same to me.
+		);
+
+		$login_post_fields = http_build_query($login_post_fields, '', '&');	// PHP >= 5.1.2
+		
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $login_post_fields); 
+		
+		$result = curl_exec($ch);
+		
+		$this->logged_in = TRUE;
+		
+		curl_close($ch);
+		
+		return true;
+		
+	} // vb_login()
+	
+	public function vb_build_pm($recipient_string, $subject_string, $body_string) {
+		
+		if(empty($recipient_string) || empty($subject_string) || empty($body_string))
+			throw new Exception('Method vb_build_pm requires three non-empty strings.');
+			
+		$this->pms[] = array(
+			'recipients' => $recipient_string,
+			'title' => $subject_string,
+			'message' => $body_string,
+		);
+		
+	} // vb_build_pm()
+
+	public function vb_send_pms($logout_bool = TRUE) {
+		
+		if(empty($this->pms))
+			throw new Exception('No PMs to send!');
+			
+		if(!$this->logged_in)
+			self::vb_login();
+		
+		$ch = curl_init();
+			
+		curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) honforge authenticator');
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt($ch, CURLOPT_COOKIEFILE, $this->cookie);
+		curl_setopt($ch, CURLOPT_COOKIEJAR, $this->cookie);
+		
+		foreach($this->pms as $val) {
+			
+			// Retrieve the PM page to get the security token
+
+			curl_setopt($ch, CURLOPT_URL, $this->forum . $this->script_pm . $this->action_newpm);
+			curl_setopt($ch, CURLOPT_POST, false);
+			$result = curl_exec($ch);
+
+			if(preg_match($this->security_token_expr, $result, $matches))
+				$security_token = $matches[1];
+			else
+				throw new Exception('Could not find a security token matching expression in '.$this->forum . $this->script_pm . $this->action_newpm.'.');
+				
+			$pm_post_fields = $val;
+			
+			// Bulk out our PM with some vBulletin nonsense
+			
+			$pm_post_fields['bccrecipients'] = $pm_post_fields['pmid'] = $pm_post_fields['forward'] = '';
+			// $pm_post_fields['iconid'] = '0';
+			$pm_post_fields['s'] = ''; // Might need to use $s_key here
+			$pm_post_fields['securitytoken'] = $security_token;
+			$pm_post_fields['do'] = end(explode('=',$this->action_insertpm));
+			// $pm_post_fields['sbutton'] = 'Submit Message';
+			$pm_post_fields['savecopy'] = $pm_post_fields['parseurl'] = 1; // Save message to sent folder and automatically parse URLs in body
+			
+			curl_setopt($ch, CURLOPT_URL, $this->forum . $this->script_pm . $this->action_insertpm);
+			curl_setopt($ch, CURLOPT_POST, true);
+			$pm_post_fields = http_build_query($pm_post_fields, '', '&');
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $pm_post_fields);
+			echo $result = curl_exec($ch);
+
+			// Should confirm the PM was sent here
+			
+		}
+
+		if($logout_bool)
+			self::vb_logout();
+		
+		return true;
+		
+	} // vb_send_pm()
+	
+	public function vb_logout() {
+		
+		if(!empty($this->ch))
+			curl_close($ch);
+		
+		if(!empty($this->cookie) && !unlink($this->cookie))
+			throw new Exception('Could not remove cookie file '.$this->cookie);
+		
+		return true;
+	}
+
+} // VBTalk
+
+/**
+*
+* A cheeky wee helper function for hon_talk_form_alter()
+*
+**/
+
+function is_valid_hon_username($username_string) {
+	
+	// HoN usernames are case insensitive, may include only [a-zA-Z0-9`_] and cannot start with a number or exceed 13 characters
+	
+	$username = strtolower($username_string);
+	
+	if(empty($username))
+		return false;
+		
+	if(strlen($username) >= 13)
+		return false;
+		
+	$username = str_replace('`', '', $username);
+	$username = str_replace('_', '', $username);
+	
+	if(!ctype_alnum($username))
+		return false;
+		
+	if(is_numeric(substr($username, 0, 1)))
+		return false;
+		
+	return true;
+	
+}
+
+/**
+*
+* Wrapper for XMLTalk->nick2id
+*
+**/
+
+function is_hon_account($username_string) {
+	
+	$xml_params = array(
+		'request_url' => variable_get('hon_talk_xml_request_url', HON_TALK_DEFAULT_XML_REQUEST_URL),
+		'action_nick2id' => variable_get('hon_talk_xml_action_nick2id', HON_TALK_DEFAULT_XML_ACTION_NICK2ID)
+	);
+	
+	try {
+
+		$xml_talk = new XMLTalk($xml_params);
+		$return = $xml_talk->nick2id($username_string);
+		
+	} catch(Exception $e) {
+		
+		hon_talk_exception($e);
+		
+	}
+	
+	if(!$return)
+		return false;
+		
+	return true;
+	
+}
+
+/**
+*
+* Some utility functions
+*
+**/
+
+function hon_talk_exception($e) {
+	
+	error_log($message = $e->getMessage());
+	
+	echo $message;
+	
+	exit;
+	
+}
+
+function hon_talk_array_out($array) {
+	
+	echo "<pre>\n";
+	print_r($array);
+	echo "</pre>\n";
+	
+}
