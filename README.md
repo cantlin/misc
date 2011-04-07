@@ -1,6 +1,6 @@
 ### ggu
 
-Basically a glorified shell script that chains some commands: [gphoto2](http://www.gphoto.org/] to get all the pictures from your digital camera, [ImageMagick](http://www.imagemagick.org/script/) to normalize, resize and optionally rotate the images, and `ftp` to upload them some place. Do `./ggu.py -h` for options.
+Glorified shell script that chains some commands: [gphoto2](http://www.gphoto.org/] to get all the pictures from your digital camera, [ImageMagick](http://www.imagemagick.org/) to normalize, resize and optionally rotate the images, and `ftp` to upload them some place. Do `./ggu.py -h` for options.
 
 ### hon_talk
 
